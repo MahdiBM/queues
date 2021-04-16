@@ -25,7 +25,7 @@ public final class QueuesCommand: Command {
     
     private let application: Application
     private var jobTasks: [RepeatedTask]
-    private var scheduledTasks: [String: AnyScheduledJob.Task]
+    private var scheduledTasks: [String: ScheduleBuilder.Task]
     private var lock: Lock
     private var signalSources: [DispatchSourceSignal]
     private var didShutdown: Bool
@@ -144,7 +144,7 @@ public final class QueuesCommand: Command {
         }
     }
     
-    private func schedule(_ job: AnyScheduledJob) {
+    private func schedule(_ job: ScheduleBuilder) {
         if self.isShuttingDown.load() {
             self.application.logger.trace("Application is shutting down, cancelling scheduling \(job.job.name)")
             return

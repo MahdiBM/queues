@@ -1,5 +1,8 @@
 import struct Foundation.DateComponents
 import struct Foundation.Calendar
+import struct Foundation.UUID
+import typealias Foundation.TimeInterval
+import class NIO.RepeatedTask
 
 /// An object that can be used to build a scheduled job
 public final class ScheduleBuilder {
@@ -249,6 +252,26 @@ public final class ScheduleBuilder {
             self.init(value)
         }
     }
+    
+    /// Describes when a schedule should be run
+    public enum TimeValue {
+        case exact(date: Date)
+        /// isFirstLifecycle explanation:
+        /// The `_nextDate(current:)` looks at this when `self.interval` is not nil.
+        /// This __must__ only be set to `false` by the app or the `_nextDate(current:)`
+        /// function output can turn wrong. `_nextDate(current:)` will
+        /// set this to `false` after the first time.
+        case intervalBased(offset: TimeInterval,
+                           interval: TimeInterval,
+                           isFirstLifecycle: Bool = true)
+        case componentBased(month: Month? = nil,
+                            day: Day? = nil,
+                            weekday: Weekday? = nil,
+                            time: Time? = nil,
+                            minute: Minute? = nil,
+                            second: Second? = nil,
+                            nanosecond: Int? = nil)
+    }
 
     // MARK: Builders
 
@@ -259,7 +282,7 @@ public final class ScheduleBuilder {
         /// The month to run the job in
         /// - Parameter month: A `Month` to run the job in
         public func `in`(_ month: Month) -> Monthly {
-            self.builder.month = month
+            self.builder.timeValue = .componentBased(month: month)
             return self.builder.monthly()
         }
     }
@@ -271,7 +294,7 @@ public final class ScheduleBuilder {
         /// The day to run the job on
         /// - Parameter day: A `Day` to run the job on
         public func on(_ day: Day) -> Daily {
-            self.builder.day = day
+            self.builder.timeValue = .componentBased(day: day)
             return self.builder.daily()
         }
     }
@@ -283,7 +306,7 @@ public final class ScheduleBuilder {
         /// The day of week to run the job on
         /// - Parameter dayOfWeek: A `DayOfWeek` to run the job on
         public func on(_ weekday: Weekday) -> Daily {
-            self.builder.weekday = weekday
+            self.builder.timeValue = .componentBased(weekday: weekday)
             return self.builder.daily()
         }
     }
@@ -295,7 +318,7 @@ public final class ScheduleBuilder {
         /// The time to run the job at
         /// - Parameter time: A `Time` object to run the job on
         public func at(_ time: Time) {
-            self.builder.time = time
+            self.builder.timeValue = .componentBased(time: time)
         }
 
         /// The 24 hour time to run the job at
@@ -321,7 +344,7 @@ public final class ScheduleBuilder {
         /// The minute to run the job at
         /// - Parameter minute: A `Minute` to run the job at
         public func at(_ minute: Minute) {
-            self.builder.minute = minute
+            self.builder.timeValue = .componentBased(minute: minute)
         }
     }
     
@@ -332,72 +355,209 @@ public final class ScheduleBuilder {
         /// The second to run the job at
         /// - Parameter second: A `Second` to run the job at
         public func at(_ second: Second) {
-            self.builder.second = second
+            self.builder.timeValue = .componentBased(second: second)
+        }
+    }
+    
+    /// Runs a job every `amount` in the `interval`
+    ///
+    /// `underestimatedCount` Explanation:
+    /// underestimatedCount is only useful in some cases when
+    /// interval.nanoseconds % amount.nanoseconds is non-zero.
+    /// It will decide whether the function should use the most possible
+    /// number of jobs possible using the provided `amount` and `interval`
+    /// or it should use the lower count of jobs.
+    ///
+    /// By example, imagine `amount` is equal to _5 hours_ and `interval` is
+    /// equal to _22 hours_.
+    ///
+    /// when `underestimatedCount` is `true`, the number of jobs created
+    /// will be 22 / 5 = 4, which will be done on hours 0, 5, 10 and 15.
+    /// In this case, it __will not__ schedule a job for the hour _20_ because
+    /// the period between the hour _20_ and the next hour _0_ is only 3 hours
+    /// and preceeds the value of `amount` which is _5_ hours.
+    /// But, when `underestimatedCount` is set to `false`, the function
+    /// __will__ include the hour _20_ although the interval between
+    /// the hour _20_ and the next _0_ hour is only _3_ and preceeds
+    /// the `amount` _5_.
+    ///
+    /// - Parameter amount: A `TimeAmount` after which the job will be repeated.
+    /// - Parameter interval: A `TimeAmount` period in which the job will be repeated.
+    /// - Parameter underestimatedCount: Decides whether the function should underestimate
+    /// count of the created jobs or overestimate.
+    public func every(
+        _ amount: TimeAmount,
+        in interval: TimeAmount,
+        underestimatedCount: Bool = false
+    ) {
+        let nanoInterval = interval.nanoseconds
+        let nanoAmount = amount.nanoseconds
+        precondition(nanoAmount > 0, "Amount \(amount.nanoseconds) is not positive.")
+        precondition(nanoAmount <= nanoInterval, "Amount \(amount.nanoseconds) is greater than interval \(interval.nanoseconds).")
+        let runCount: Int64
+        if underestimatedCount {
+            runCount = nanoInterval / nanoAmount
+        } else {
+            runCount = Int64((Double(nanoInterval) / Double(nanoAmount)).rounded(.up))
+        }
+        let timeAmounts = (0..<runCount).map { index in
+            index * nanoAmount
+        }
+        /// After using `.every` on top a `Builder`, the current builder
+        /// is populated with the first schedule time, and the next schedule times
+        /// will have a new builder created for them and added to the container.
+        timeAmounts.enumerated().forEach { index, timeAmount in
+            let builder: ScheduleBuilder
+            switch index {
+            case 0: builder = self
+            default: builder = ScheduleBuilder(job: self.job, configuration: &self.configuration)
+            }
+            let timeAmountSeconds = TimeInterval(timeAmount) / 1000 / 1000 / 1000
+            let intervalSeconds = TimeInterval(nanoInterval) / 1000 / 1000 / 1000
+            builder.timeValue = .intervalBased(
+                offset: timeAmountSeconds,
+                interval: intervalSeconds)
+        }
+    }
+    
+    /// Schedules a job at the specified dates
+    public func at(_ dates: Date...) -> Void {
+        self.at(dates)
+    }
+    
+    /// Schedules a job at the specified dates
+    public func at(_ dates: [Date]) -> Void {
+        dates.enumerated().forEach { index, date in
+            if index == 0 {
+                self.timeValue = .exact(date: date)
+            } else {
+                let builder = ScheduleBuilder(job: self.job, configuration: &self.configuration)
+                builder.timeValue = .exact(date: date)
+            }
+        }
+    }
+    
+    /// Retrieves the next date
+    ///
+    /// Caution:
+    /// If the current builder is built using `.every` functions, using
+    /// `_nextDate()` will start its lifecycle. Use the public
+    /// `nextDate()` function to not start the lifecycle.
+    /// Read `TimeValue.intervalBased.isFirstLifecycle` comments for more.
+    ///
+    /// - Parameter current: The current date
+    /// - Parameter startLifecycle: Whether or not calling this function should
+    /// start the builder's lifecycle. Internality of this function
+    /// is to prevent users from setting `TimeValue.intervalBased.isFirstLifecycle`
+    /// to `false` and start the lifecycle by accident
+    /// - Returns: The next date
+    internal func _nextDate(current: Date = .init(), startLifecycle: Bool = true) -> Date? {
+        guard let value = timeValue else { return nil }
+        switch value {
+        case .exact(let date):
+            switch date > current {
+            case true: return date
+            case false: return nil
+            }
+        case let .intervalBased(offset, interval, isFirstLifecycle):
+            switch isFirstLifecycle {
+            case false:
+                return current.addingTimeInterval(interval)
+            case true:
+                if startLifecycle {
+                    self.timeValue = .intervalBased(
+                        offset: offset,
+                        interval: interval,
+                        isFirstLifecycle: false)
+                }
+                return current.addingTimeInterval(offset)
+            }
+        case let .componentBased(month, day, weekday, time, minute, second, nanosecond):
+            var components = DateComponents()
+            if let nanosecond = nanosecond {
+                components.nanosecond = nanosecond
+            }
+            if let second = second {
+                components.second = second.number
+            }
+            if let minute = minute {
+                components.minute = minute.number
+            }
+            if let time = time {
+                components.minute = time.minute.number
+                components.hour = time.hour.number
+            }
+            if let weekday = weekday {
+                components.weekday = weekday.rawValue
+            }
+            if let day = day {
+                switch day {
+                case .first:
+                    components.day = 1
+                case .last:
+                    fatalError("Last day of the month is not yet supported.")
+                case .exact(let exact):
+                    components.day = exact
+                }
+            }
+            if let month = month {
+                components.month = month.rawValue
+            }
+            return Calendar.current.nextDate(
+                after: current,
+                matching: components,
+                matchingPolicy: .strict
+            )
         }
     }
     
     /// Retrieves the next date
     /// - Parameter current: The current date
     /// - Returns: The next date
-    public func nextDate(current: Date = .init()) -> Date? {
-        if let date = self.date, date > current {
-            return date
-        }
-        
-        var components = DateComponents()
-        if let milliseconds = millisecond {
-            components.nanosecond = milliseconds
-        }
-        if let second = self.second {
-            components.second = second.number
-        }
-        if let minute = self.minute {
-            components.minute = minute.number
-        }
-        if let time = self.time {
-            components.minute = time.minute.number
-            components.hour = time.hour.number
-        }
-        if let weekday = self.weekday {
-            components.weekday = weekday.rawValue
-        }
-        if let day = self.day {
-            switch day {
-            case .first:
-                components.day = 1
-            case .last:
-                fatalError("Last day of the month is not yet supported.")
-            case .exact(let exact):
-                components.day = exact
-            }
-        }
-        if let month = self.month {
-            components.month = month.rawValue
-        }
-        return Calendar.current.nextDate(
-            after: current,
-            matching: components,
-            matchingPolicy: .strict
-        )
+    public func nextDate(current: Date = Date()) -> Date? {
+        self._nextDate(current: current, startLifecycle: false)
     }
     
-    /// Date to perform task (one-off job)
-    var date: Date?
-    var month: Month?
-    var day: Day?
-    var weekday: Weekday?
-    var time: Time?
-    var minute: Minute?
-    var second: Second?
-    var millisecond: Int?
+    let id = UUID()
+    let job: ScheduledJob
+    var configuration: QueuesConfiguration
+    private var _timeValue: TimeValue? = nil
+    public var timeValue: TimeValue? {
+        get { _timeValue }
+        set {
+            /// Adds newValue to _timeValue if both are `.componentBased`,
+            /// sets _timeValue to newValue otherwise
+            switch newValue {
+            case let .componentBased(month, day, weekday, time,
+                                     minute, second, nanosecond):
+                switch _timeValue {
+                case let .componentBased(monthP, dayP, weekdayP,
+                                         timeP, minuteP, secondP, nanosecondP):
+                    _timeValue = TimeValue.componentBased(
+                        month: month ?? monthP, day: day ?? dayP,
+                        weekday: weekday ?? weekdayP, time: time ?? timeP,
+                        minute: minute ?? minuteP, second: second ?? secondP,
+                        nanosecond: nanosecond ?? nanosecondP)
+                default: _timeValue = newValue
+                }
+            default: _timeValue = newValue
+            }
+        }
+    }
 
-    public init() { }
+    public init(job: ScheduledJob, configuration: inout QueuesConfiguration) {
+        self.job = job
+        self.configuration = configuration
+        if !configuration.scheduledJobs.contains(where: { $0.id == self.id }) {
+            configuration.scheduledJobs.append(self)
+        }
+    }
 
     // MARK: Helpers
     
     /// Schedules a job at a specific date
     public func at(_ date: Date) -> Void {
-        self.date = date
+        self.timeValue = .exact(date: date)
     }
     
     /// Creates a yearly scheduled job for further building
@@ -433,7 +593,32 @@ public final class ScheduleBuilder {
     
     /// Runs a job every second
     public func everySecond() {
-        self.millisecond = 0
+        self.every(.seconds(1), in: .seconds(1))
+    }
+    
+    struct Task {
+        let task: RepeatedTask
+        let done: EventLoopFuture<Void>
+    }
+    
+    func schedule(context: QueueContext) -> Task? {
+        context.logger.trace("Beginning the scheduler process")
+        guard let date = self._nextDate() else {
+            context.logger.debug("No date scheduled for \(self.job.name)")
+            return nil
+        }
+        context.logger.debug("Scheduling \(self.job.name) to run at \(date)")
+        let promise = context.eventLoop.makePromise(of: Void.self)
+        let task = context.eventLoop.scheduleRepeatedTask(
+            initialDelay: .microseconds(Int64(date.timeIntervalSinceNow * 1_000_000)),
+            delay: .seconds(0)
+        ) { task in
+            // always cancel
+            task.cancel()
+            context.logger.trace("Running the scheduled job \(self.job.name)")
+            self.job.run(context: context).cascade(to: promise)
+        }
+        return .init(task: task, done: promise.futureResult)
     }
 }
 

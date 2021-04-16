@@ -1,9 +1,16 @@
+@testable import Vapor
 import Queues
 import XCTest
 
 final class ScheduleBuilderTests: XCTestCase {
+    var app: Application!
+    
+    override func setUp() {
+        self.app = Application(.testing)
+    }
+    
     func testHourlyBuilder() throws {
-        let builder = ScheduleBuilder()
+        let builder = ScheduleBuilder(job: Cleanup(), configuration: &app.queues.configuration)
         builder.hourly().at(30)
         // same time
         XCTAssertEqual(
@@ -26,7 +33,7 @@ final class ScheduleBuilderTests: XCTestCase {
     }
     
     func testDailyBuilder() throws {
-        let builder = ScheduleBuilder()
+        let builder = ScheduleBuilder(job: Cleanup(), configuration: &app.queues.configuration)
         builder.daily().at("5:23am")
         // same time
         XCTAssertEqual(
@@ -49,7 +56,7 @@ final class ScheduleBuilderTests: XCTestCase {
     }
     
     func testWeeklyBuilder() throws {
-        let builder = ScheduleBuilder()
+        let builder = ScheduleBuilder(job: Cleanup(), configuration: &app.queues.configuration)
         builder.weekly().on(.monday).at(.noon)
         // sunday before
         XCTAssertEqual(
@@ -72,7 +79,7 @@ final class ScheduleBuilderTests: XCTestCase {
     }
     
     func testMonthlyBuilderFirstDay() throws {
-        let builder = ScheduleBuilder()
+        let builder = ScheduleBuilder(job: Cleanup(), configuration: &app.queues.configuration)
         builder.monthly().on(.first).at(.noon)
         // middle of jan
         XCTAssertEqual(
@@ -95,7 +102,7 @@ final class ScheduleBuilderTests: XCTestCase {
     }
     
     func testMonthlyBuilder15th() throws {
-        let builder = ScheduleBuilder()
+        let builder = ScheduleBuilder(job: Cleanup(), configuration: &app.queues.configuration)
         builder.monthly().on(15).at(.noon)
         // just before
         XCTAssertEqual(
@@ -112,7 +119,7 @@ final class ScheduleBuilderTests: XCTestCase {
     }
     
     func testYearlyBuilder() throws {
-        let builder = ScheduleBuilder()
+        let builder = ScheduleBuilder(job: Cleanup(), configuration: &app.queues.configuration)
         builder.yearly().in(.may).on(23).at("2:58pm")
         // early in the year
         XCTAssertEqual(

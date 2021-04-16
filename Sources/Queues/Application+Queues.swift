@@ -128,8 +128,8 @@ extension Application {
         public func schedule<J>(_ job: J) -> ScheduleBuilder
             where J: ScheduledJob
         {
-            let builder = ScheduleBuilder()
-            _ = self.storage.configuration.schedule(job, builder: builder)
+            let builder = ScheduleBuilder(job: job, configuration: &self.configuration)
+            self.storage.configuration.schedule(builder: builder)
             return builder
         }
 
