@@ -129,7 +129,6 @@ extension Application {
             where J: ScheduledJob
         {
             let builder = ScheduleBuilder(job: job, configuration: &self.configuration)
-            self.storage.configuration.schedule(builder: builder)
             return builder
         }
 

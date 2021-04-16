@@ -549,7 +549,7 @@ public final class ScheduleBuilder {
         self.job = job
         self.configuration = configuration
         if !configuration.scheduledJobs.contains(where: { $0.id == self.id }) {
-            configuration.scheduledJobs.append(self)
+            configuration.schedule(builder: self)
         }
     }
 
