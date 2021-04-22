@@ -356,7 +356,7 @@ public final class ScheduleContainer {
     }
     
     public let job: ScheduledJob
-    public var builders: [Builder] = []
+    var builders: [Builder] = []
     
     public init(job: ScheduledJob) {
         self.job = job
