@@ -132,7 +132,7 @@ public final class QueuesCommand: Command {
     public func startScheduledJobs() throws {
         self.application.logger.trace("Checking for scheduled jobs to begin the worker")
 
-        /// Adding builders of the containers who have the same `ScheduledJob`
+        /// Adding builders of the containers who have the same `ScheduledJob.name`
         /// together to avoid unnecessary memory usage by the containers
         let containers = self.application.queues.configuration.scheduledJobsContainers
         var unneededContainersIndices: Set<Int> = .init()

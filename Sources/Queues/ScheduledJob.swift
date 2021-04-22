@@ -2,6 +2,7 @@ import class NIO.RepeatedTask
 
 /// Describes a job that can be scheduled and repeated
 public protocol ScheduledJob {
+    /// The name unique to this `ScheduledJob`
     var name: String { get }
     /// The method called when the job is run
     /// - Parameter context: A `JobContext` that can be used
@@ -30,7 +31,7 @@ extension AnyScheduledJob {
     
     func schedule(context: QueueContext) -> Task? {
         context.logger.trace("Beginning the scheduler process")
-        guard let date = self.scheduler._nextDate() else {
+        guard let date = self.scheduler.nextDate() else {
             context.logger.debug("No date scheduled for \(self.job.name)")
             return nil
         }

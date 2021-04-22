@@ -125,9 +125,7 @@ extension Application {
 
         /// Schedule a new job
         /// - Parameter job: The job to schedule
-        public func schedule<J>(_ job: J) -> ScheduleContainer
-        where J: ScheduledJob
-        {
+        public func schedule(_ job: ScheduledJob) -> ScheduleContainer {
             let container = ScheduleContainer(job: job)
             self.storage.configuration.schedule(container: container)
             return container

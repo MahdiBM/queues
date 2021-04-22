@@ -1,8 +1,6 @@
 import Queues
-import Vapor
 import XCTVapor
 import XCTQueues
-@testable import Vapor
 import NIOConcurrencyHelpers
 
 final class QueueTests: XCTestCase {

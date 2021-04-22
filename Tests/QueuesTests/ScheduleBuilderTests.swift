@@ -11,19 +11,19 @@ final class ScheduleContainerTests: XCTestCase {
 
         // same time
         XCTAssertEqual(
-            builder._nextDate(current: Date(hour: 5, minute: 30)),
+            builder.nextDate(current: Date(hour: 5, minute: 30)),
             // plus one hour
             Date(hour: 6, minute: 30)
         )
         // just before
         XCTAssertEqual(
-            builder._nextDate(current: Date(hour: 5, minute: 29)),
+            builder.nextDate(current: Date(hour: 5, minute: 29)),
             // plus one minute
             Date(hour: 5, minute: 30)
         )
         // just after
         XCTAssertEqual(
-            builder._nextDate(current: Date(hour: 5, minute: 31)),
+            builder.nextDate(current: Date(hour: 5, minute: 31)),
             // plus one hour
             Date(hour: 6, minute: 30)
         )
@@ -35,19 +35,19 @@ final class ScheduleContainerTests: XCTestCase {
         builder.daily().at("5:23am")
         // same time
         XCTAssertEqual(
-            builder._nextDate(current: Date(day: 1, hour: 5, minute: 23)),
+            builder.nextDate(current: Date(day: 1, hour: 5, minute: 23)),
             // plus one day
             Date(day: 2, hour: 5, minute: 23)
         )
         // just before
         XCTAssertEqual(
-            builder._nextDate(current: Date(day: 1, hour: 5, minute: 22)),
+            builder.nextDate(current: Date(day: 1, hour: 5, minute: 22)),
             // plus one minute
             Date(day: 1, hour: 5, minute: 23)
         )
         // just after
         XCTAssertEqual(
-            builder._nextDate(current: Date(day: 1, hour: 5, minute: 24)),
+            builder.nextDate(current: Date(day: 1, hour: 5, minute: 24)),
             // plus one day
             Date(day: 2, hour: 5, minute: 23)
         )
@@ -59,19 +59,19 @@ final class ScheduleContainerTests: XCTestCase {
         builder.weekly().on(.monday).at(.noon)
         // sunday before
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 1, day: 6, hour: 5, minute: 23)),
+            builder.nextDate(current: Date(year: 2019, month: 1, day: 6, hour: 5, minute: 23)),
             // next day at noon
             Date(year: 2019, month: 1, day: 7, hour: 12, minute: 00)
         )
         // monday at 1pm
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 1, day: 7, hour: 13, minute: 00)),
+            builder.nextDate(current: Date(year: 2019, month: 1, day: 7, hour: 13, minute: 00)),
             // next monday at noon
             Date(year: 2019, month: 1, day: 14, hour: 12, minute: 00)
         )
         // monday at 11:30am
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 1, day: 7, hour: 11, minute: 30)),
+            builder.nextDate(current: Date(year: 2019, month: 1, day: 7, hour: 11, minute: 30)),
             // same day at noon
             Date(year: 2019, month: 1, day: 7, hour: 12, minute: 00)
         )
@@ -84,19 +84,19 @@ final class ScheduleContainerTests: XCTestCase {
 
         // middle of jan
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 1, day: 15, hour: 5, minute: 23)),
+            builder.nextDate(current: Date(year: 2019, month: 1, day: 15, hour: 5, minute: 23)),
             // first of feb
             Date(year: 2019, month: 2, day: 1, hour: 12, minute: 00)
         )
         // just before
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 2, day: 1, hour: 11, minute: 30)),
+            builder.nextDate(current: Date(year: 2019, month: 2, day: 1, hour: 11, minute: 30)),
             // first of feb
             Date(year: 2019, month: 2, day: 1, hour: 12, minute: 00)
         )
         // just after
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 2, day: 1, hour: 12, minute: 30)),
+            builder.nextDate(current: Date(year: 2019, month: 2, day: 1, hour: 12, minute: 30)),
             // first of feb
             Date(year: 2019, month: 3, day: 1, hour: 12, minute: 00)
         )
@@ -108,13 +108,13 @@ final class ScheduleContainerTests: XCTestCase {
         builder.monthly().on(15).at(.noon)
         // just before
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 2, day: 15, hour: 11, minute: 30)),
+            builder.nextDate(current: Date(year: 2019, month: 2, day: 15, hour: 11, minute: 30)),
             // first of feb
             Date(year: 2019, month: 2, day: 15, hour: 12, minute: 00)
         )
         // just after
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 2, day: 15, hour: 12, minute: 30)),
+            builder.nextDate(current: Date(year: 2019, month: 2, day: 15, hour: 12, minute: 30)),
             // first of feb
             Date(year: 2019, month: 3, day: 15, hour: 12, minute: 00)
         )
@@ -126,19 +126,19 @@ final class ScheduleContainerTests: XCTestCase {
         builder.yearly().in(.may).on(23).at("2:58pm")
         // early in the year
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 1, day: 15, hour: 5, minute: 23)),
+            builder.nextDate(current: Date(year: 2019, month: 1, day: 15, hour: 5, minute: 23)),
             // 2019
             Date(year: 2019, month: 5, day: 23, hour: 14, minute: 58)
         )
         // just before
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 5, day: 23, hour: 14, minute: 57)),
+            builder.nextDate(current: Date(year: 2019, month: 5, day: 23, hour: 14, minute: 57)),
             // one minute later
             Date(year: 2019, month: 5, day: 23, hour: 14, minute: 58)
         )
         // just after
         XCTAssertEqual(
-            builder._nextDate(current: Date(year: 2019, month: 5, day: 23, hour: 14, minute: 59)),
+            builder.nextDate(current: Date(year: 2019, month: 5, day: 23, hour: 14, minute: 59)),
             // one year later
             Date(year: 2020, month: 5, day: 23, hour: 14, minute: 58)
         )
@@ -152,16 +152,16 @@ final class ScheduleContainerTests: XCTestCase {
         // schedule time, and for the next schedule times we'll have new builders created
         // and added to the container.
 
-        // Test to make sure builders made with `.every` function will have different `._nextDate()`s
+        // Test to make sure builders made with `.every` function will have different `.nextDate()`s
         do {
             let builderContainer = ScheduleContainer(job: Cleanup())
             let builder = ScheduleContainer.Builder(container: builderContainer)
             builder.minutely().every(.seconds(19))
             let builders = builderContainer.builders
 
-            let date0 = builders[0]._nextDate()
-            let date1 = builders[1]._nextDate()
-            let date2 = builders[2]._nextDate()
+            let date0 = builders[0].nextDate()
+            let date1 = builders[1].nextDate()
+            let date2 = builders[2].nextDate()
             XCTAssertNotEqual(date0, date1)
             XCTAssertNotEqual(date0, date2)
             XCTAssertNotEqual(date1, date2)
@@ -176,16 +176,16 @@ final class ScheduleContainerTests: XCTestCase {
             let builder2 = builderContainer.builders[1]
 
             XCTAssertEqual(
-                builder._nextDate(current: Date(hour: 5, minute: 30)),
+                builder.nextDate(current: Date(hour: 5, minute: 30)),
                 // plus one hour
                 Date(hour: 5, minute: 30, second: 1)
             )
             XCTAssertEqual(
-                builder._nextDate(current: Date(hour: 5, minute: 30)),
+                builder.nextDate(current: Date(hour: 5, minute: 30)),
                 Date(hour: 6, minute: 30)
             )
             XCTAssertEqual(
-                builder2._nextDate(current: Date(hour: 5, minute: 30)),
+                builder2.nextDate(current: Date(hour: 5, minute: 30)),
                 Date(hour: 6, minute: 00, second: 1)
             )
         }

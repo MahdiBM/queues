@@ -5,6 +5,9 @@ import typealias Foundation.TimeInterval
 
 /// An object that can be used to build a scheduled job
 public final class ScheduleContainer {
+    
+    //MARK: Time representative types
+    
     /// Months of the year
     public enum Month: Int {
         case january = 1
@@ -252,6 +255,106 @@ public final class ScheduleContainer {
         }
     }
     
+    //MARK: Timer types
+    
+    /// An object to build a `Yearly` scheduled job
+    public struct Yearly {
+        let builder: Builder
+        
+        /// The month to run the job in
+        /// - Parameter month: A `Month` to run the job in
+        public func `in`(_ month: Month) -> Monthly {
+            self.builder.timeValue = .componentBased(month: month)
+            return self.builder.monthly()
+        }
+    }
+    
+    /// An object to build a `Monthly` scheduled job
+    public struct Monthly {
+        let builder: Builder
+        
+        /// The day to run the job on
+        /// - Parameter day: A `Day` to run the job on
+        public func on(_ day: Day) -> Daily {
+            self.builder.timeValue = .componentBased(day: day)
+            return self.builder.daily()
+        }
+    }
+    
+    /// An object to build a `Weekly` scheduled job
+    public struct Weekly {
+        let builder: Builder
+        
+        /// The day of week to run the job on
+        /// - Parameter dayOfWeek: A `DayOfWeek` to run the job on
+        public func on(_ weekday: Weekday) -> Daily {
+            self.builder.timeValue = .componentBased(weekday: weekday)
+            return self.builder.daily()
+        }
+    }
+    
+    /// An object to build a `Daily` scheduled job
+    public struct Daily {
+        let builder: Builder
+        
+        /// The time to run the job at
+        /// - Parameter time: A `Time` object to run the job on
+        public func at(_ time: Time) {
+            self.builder.timeValue = .componentBased(time: time)
+        }
+        
+        /// The 24 hour time to run the job at
+        /// - Parameter hour: A `Hour24` to run the job at
+        /// - Parameter minute: A `Minute` to run the job at
+        public func at(_ hour: Hour24, _ minute: Minute) {
+            self.at(.init(hour, minute))
+        }
+        
+        /// The 12 hour time to run the job at
+        /// - Parameter hour: A `Hour12` to run the job at
+        /// - Parameter minute: A `Minute` to run the job at
+        /// - Parameter period: A `HourPeriod` to run the job at (`am` or `pm`)
+        public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod) {
+            self.at(.init(hour, minute, period))
+        }
+    }
+    
+    /// An object to build a `Hourly` scheduled job
+    public struct Hourly {
+        let builder: Builder
+        
+        /// Runs the job multiple times
+        /// - Parameter amount: A period after which the job will be repeated as
+        /// many times as an hour allows.
+        public func every(_ amount: TimeAmount) {
+            self.builder.every(amount, in: .hours(1))
+        }
+        
+        /// The minute to run the job at
+        /// - Parameter minute: A `Minute` to run the job at
+        public func at(_ minute: Minute) {
+            self.builder.timeValue = .componentBased(minute: minute)
+        }
+    }
+    
+    /// An object to build a `EveryMinute` scheduled job
+    public struct Minutely {
+        let builder: Builder
+        
+        /// Runs the job multiple times
+        /// - Parameter amount: A period after which the job will be repeated as
+        /// many times as a minute allows.
+        public func every(_ amount: TimeAmount) {
+            self.builder.every(amount, in: .minutes(1))
+        }
+        
+        /// The second to run the job at
+        /// - Parameter second: A `Second` to run the job at
+        public func at(_ second: Second) {
+            self.builder.timeValue = .componentBased(second: second)
+        }
+    }
+    
     public let job: ScheduledJob
     public var builders: [Builder] = []
     
@@ -272,33 +375,33 @@ public final class ScheduleContainer {
     }
     
     /// Creates a yearly scheduled job for further building
-    public func yearly() -> Builder.Yearly {
-        return Builder.Yearly(builder: Builder(container: self))
+    public func yearly() -> Yearly {
+        return Yearly(builder: Builder(container: self))
     }
     
     /// Creates a monthly scheduled job for further building
-    public func monthly() -> Builder.Monthly {
-        return Builder.Monthly(builder: Builder(container: self))
+    public func monthly() -> Monthly {
+        return Monthly(builder: Builder(container: self))
     }
     
     /// Creates a weekly scheduled job for further building
-    public func weekly() -> Builder.Weekly {
-        return Builder.Weekly(builder: Builder(container: self))
+    public func weekly() -> Weekly {
+        return Weekly(builder: Builder(container: self))
     }
     
     /// Creates a daily scheduled job for further building
-    public func daily() -> Builder.Daily {
-        return Builder.Daily(builder: Builder(container: self))
+    public func daily() -> Daily {
+        return Daily(builder: Builder(container: self))
     }
     
     /// Creates a hourly scheduled job for further building
-    public func hourly() -> Builder.Hourly {
-        return Builder.Hourly(builder: Builder(container: self))
+    public func hourly() -> Hourly {
+        return Hourly(builder: Builder(container: self))
     }
     
     /// Creates a minutely scheduled job for further building
-    public func minutely() -> Builder.Minutely {
-        return Builder.Minutely(builder: Builder(container: self))
+    public func minutely() -> Minutely {
+        return Minutely(builder: Builder(container: self))
     }
     
     /// Runs a job every second
@@ -309,10 +412,10 @@ public final class ScheduleContainer {
     /// Runs a job every `amount` in the `interval`
     ///
     /// `underestimatedCount` Explanation:
-    /// underestimatedCount is only useful in some cases when
+    /// underestimatedCount is only useful in cases where
     /// interval.nanoseconds % amount.nanoseconds is non-zero.
-    /// It will decide whether the function should use the most possible
-    /// number of jobs possible using the provided `amount` and `interval`
+    /// It will decide whether the function should use the most number
+    /// of jobs possible using the provided `amount` and `interval`
     /// or it should use the lower count of jobs.
     ///
     /// By example, imagine `amount` is equal to _5 hours_ and `interval` is
@@ -357,129 +460,33 @@ public final class ScheduleContainer {
 //MARK: - Builder
 
 extension ScheduleContainer {
-    public final class Builder {
-        
-        /// An object to build a `Yearly` scheduled job
-        public struct Yearly {
-            let builder: Builder
-            
-            /// The month to run the job in
-            /// - Parameter month: A `Month` to run the job in
-            public func `in`(_ month: Month) -> Monthly {
-                self.builder.timeValue = .componentBased(month: month)
-                return self.builder.monthly()
-            }
-        }
-        
-        /// An object to build a `Monthly` scheduled job
-        public struct Monthly {
-            let builder: Builder
-            
-            /// The day to run the job on
-            /// - Parameter day: A `Day` to run the job on
-            public func on(_ day: Day) -> Daily {
-                self.builder.timeValue = .componentBased(day: day)
-                return self.builder.daily()
-            }
-        }
-        
-        /// An object to build a `Weekly` scheduled job
-        public struct Weekly {
-            let builder: Builder
-            
-            /// The day of week to run the job on
-            /// - Parameter dayOfWeek: A `DayOfWeek` to run the job on
-            public func on(_ weekday: Weekday) -> Daily {
-                self.builder.timeValue = .componentBased(weekday: weekday)
-                return self.builder.daily()
-            }
-        }
-        
-        /// An object to build a `Daily` scheduled job
-        public struct Daily {
-            let builder: Builder
-            
-            /// The time to run the job at
-            /// - Parameter time: A `Time` object to run the job on
-            public func at(_ time: Time) {
-                self.builder.timeValue = .componentBased(time: time)
-            }
-            
-            /// The 24 hour time to run the job at
-            /// - Parameter hour: A `Hour24` to run the job at
-            /// - Parameter minute: A `Minute` to run the job at
-            public func at(_ hour: Hour24, _ minute: Minute) {
-                self.at(.init(hour, minute))
-            }
-            
-            /// The 12 hour time to run the job at
-            /// - Parameter hour: A `Hour12` to run the job at
-            /// - Parameter minute: A `Minute` to run the job at
-            /// - Parameter period: A `HourPeriod` to run the job at (`am` or `pm`)
-            public func at(_ hour: Hour12, _ minute: Minute, _ period: HourPeriod) {
-                self.at(.init(hour, minute, period))
-            }
-        }
-        
-        /// An object to build a `Hourly` scheduled job
-        public struct Hourly {
-            let builder: Builder
-            
-            /// Runs the job multiple times
-            /// - Parameter amount: A period after which the job will be repeated as
-            /// many times as an hour allows.
-            public func every(_ amount: TimeAmount) {
-                self.builder.every(amount, in: .hours(1))
-            }
-            
-            /// The minute to run the job at
-            /// - Parameter minute: A `Minute` to run the job at
-            public func at(_ minute: Minute) {
-                self.builder.timeValue = .componentBased(minute: minute)
-            }
-        }
-        
-        /// An object to build a `EveryMinute` scheduled job
-        public struct Minutely {
-            let builder: Builder
-            
-            /// Runs the job multiple times
-            /// - Parameter amount: A period after which the job will be repeated as
-            /// many times as a minute allows.
-            public func every(_ amount: TimeAmount) {
-                self.builder.every(amount, in: .minutes(1))
-            }
-            
-            /// The second to run the job at
-            /// - Parameter second: A `Second` to run the job at
-            public func at(_ second: Second) {
-                self.builder.timeValue = .componentBased(second: second)
-            }
-        }
+    internal final class Builder {
         
         /// Describes the date at which the container's job is meant to be executed
-        public enum TimeValue {
+        enum TimeValue {
             case exact(date: Date)
             /// isFirstLifecycle explanation:
-            /// This __must__ only be set to `false` by the app or the `_nextDate(current:)`
-            /// function output can turn wrong. `_nextDate(current:)` will
+            /// This __must__ only be set to `false` by the `nextDate(current:)` func,
+            /// otherwise the func's output can turn wrong. `nextDate(current:)` will
             /// set this to `false` after the first time.
-            case intervalBased(offset: TimeInterval,
-                               interval: TimeInterval,
-                               isFirstLifecycle: Bool = true)
-            case componentBased(month: Month? = nil,
-                                day: Day? = nil,
-                                weekday: Weekday? = nil,
-                                time: Time? = nil,
-                                minute: Minute? = nil,
-                                second: Second? = nil,
-                                nanosecond: Int? = nil)
+            case intervalBased(
+                    offset: TimeInterval,
+                    interval: TimeInterval,
+                    isFirstLifecycle: Bool = true)
+            case componentBased(
+                    month: Month? = nil,
+                    day: Day? = nil,
+                    weekday: Weekday? = nil,
+                    time: Time? = nil,
+                    minute: Minute? = nil,
+                    second: Second? = nil,
+                    nanosecond: Int? = nil)
         }
         
-        public let id = UUID()
-        public var container: ScheduleContainer
-        private var _timeValue: TimeValue? = nil
-        public var timeValue: TimeValue? {
+        let id = UUID()
+        var container: ScheduleContainer
+        private var _timeValue: TimeValue?
+        var timeValue: TimeValue? {
             get { _timeValue }
             set {
                 /// Adds newValue to _timeValue if both are `.componentBased`,
@@ -503,7 +510,7 @@ extension ScheduleContainer {
         }
         
         /// Creates a new builder and adds it to the container if it isn't there
-        public init(container: ScheduleContainer) {
+        init(container: ScheduleContainer) {
             self.container = container
             let isBuilderInContainer = container.builders.contains(where: { $0.id == self.id })
             if !isBuilderInContainer {
@@ -640,8 +647,8 @@ extension ScheduleContainer {
         ///
         /// Caution:
         /// If the current builder is built using `.every` functions, using
-        /// `_nextDate()` will start its lifecycle. Use the public
-        /// `nextDate()` function to not start the lifecycle.
+        /// `nextDate()` will start its lifecycle. Pass `false` to `startLifecycle`
+        /// if the lifecycle has not begun yet by the app, or if you want to be cautious.
         /// Read `TimeValue.intervalBased.isFirstLifecycle` comments for more.
         ///
         /// - Parameter current: The current date
@@ -650,7 +657,7 @@ extension ScheduleContainer {
         /// is to prevent users from setting `TimeValue.intervalBased.isFirstLifecycle`
         /// to `false` and start the lifecycle by accident
         /// - Returns: The next date
-        internal func _nextDate(current: Date = .init(), startLifecycle: Bool = true) -> Date? {
+        func nextDate(current: Date = .init(), startLifecycle: Bool = true) -> Date? {
             guard let value = timeValue else { return nil }
             switch value {
             case .exact(let date):
@@ -708,13 +715,6 @@ extension ScheduleContainer {
                     matchingPolicy: .strict
                 )
             }
-        }
-        
-        /// Retrieves the next date
-        /// - Parameter current: The current date
-        /// - Returns: The next date
-        public func nextDate(current: Date = Date()) -> Date? {
-            self._nextDate(current: current, startLifecycle: false)
         }
         
     }
