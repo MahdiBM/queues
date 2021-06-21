@@ -139,7 +139,7 @@ public final class QueuesCommand: Command {
         for (index, container) in containers.enumerated() {
             for (idx, cont) in containers.enumerated() {
                 if (idx > index)
-                    && (container.job.name == cont.job.name)
+                    && (container.job.id == cont.job.id)
                     && !unneededContainersIndices.contains(index) {
                     let builders = cont.builders.map {
                         builder -> ScheduleContainer.Builder in
